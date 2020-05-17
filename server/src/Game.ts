@@ -30,6 +30,8 @@ export class Game {
     'blue', 'blue', 'blue', 'blue', 'blue', 'blue', 'blue', 'blue',
     'neutral', 'neutral', 'neutral', 'neutral', 'neutral', 'neutral', 'neutral',
   ];
+  protected static MATRIX_RED_COUNT = Game.MATRIX.filter(w => w === 'red').length;
+  protected static MATRIX_BLUE_COUNT = Game.MATRIX.filter(w => w === 'blue').length;
 
   private _name: string;
   private _players: Player[];
@@ -192,7 +194,7 @@ export class Game {
 
       this.broadcastWord(word, success);
 
-      if (word.kind === 'black') {
+      if (word.kind === 'black' || this.isComplete()) {
         this.end();
         return;
       }
@@ -251,6 +253,12 @@ export class Game {
       blackRevealed === 'red' ? 0 : this._currentWords.filter(w => w.kind === 'red' && w.revealed).length,
       blackRevealed === 'blue' ? 0 : this._currentWords.filter(w => w.kind === 'blue' && w.revealed).length,
     ];
+  }
+
+  /** Determine if game is finished */
+  protected isComplete(): boolean {
+    const [red, blue] = this.score();
+    return red === Game.MATRIX_RED_COUNT || blue === Game.MATRIX_BLUE_COUNT;
   }
 
   protected broadcast(msg: { action: string, payload?: any }): void {

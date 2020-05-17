@@ -55,6 +55,10 @@
         cols="12"
         sm="10"
       >
+        <v-container v-if="$store.state.game.end" class="text-center font-weight-bold">
+          Partie terminée !
+        </v-container>
+
         <v-container v-if="isTeamTurn" class="text-center font-weight-bold">
           À votre tour, équipe {{frTeamTurn}} !
         </v-container>
@@ -62,65 +66,67 @@
           Équipe {{teamName}}, patientez, l'autre équipe joue !
         </v-container>
 
-        <v-container v-if="currentPlayer.isSpyMaster">
-          <p>Vous êtes le maître espion {{teamName}}.</p>
+        <template v-if="!$store.state.game.end">
+          <v-container v-if="currentPlayer.isSpyMaster">
+            <p>Vous êtes le maître espion {{teamName}}.</p>
 
-          <template v-if="isTeamTurn">
-            <p v-if="this.guessGiven">
-              Vous avez fourni l'indice, vos espions réflechissent !
-            </p>
-            <v-form @submit.prevent="giveIndice" id="clue-form" v-else>
-              Vous devez fournir un indice ainsi que le nombre de mots qui s'y rapportent.
-              <v-layout row wrap>
-                <v-flex>
-                  <v-text-field
-                    label="Indice"
-                    name="tell"
-                    type="text"
-                    class="mx-3"
-                    v-model="tell"
-                    outline
-                  />
-                </v-flex>
-                <v-flex >
-                  <v-btn-toggle v-model="occurences" value="1" class="mx-3">
-                    <v-btn v-for="i in [1,2,3,4,5,6]" :key="i" :value="i">{{i}}</v-btn>
-                  </v-btn-toggle>
-                  <v-btn color="primary" class="mx-3" type="submit" form="clue-form">
-                    Donner l'indice
-                  </v-btn> 
-                </v-flex>
-              </v-layout>
-            </v-form>
-          </template>
-          <template v-else>
-            <p v-if="this.guessGiven">
-              L'indice fourni est <strong>{{currentGuess.word}}</strong> ({{currentGuess.occ}}).
-            </p>
-            <p v-else>
-              Le maître espion ennemi doit fournir un indice !
-            </p>
-          </template>
-        </v-container>
+            <template v-if="isTeamTurn">
+              <p v-if="this.guessGiven">
+                Vous avez fourni l'indice, vos espions réflechissent !
+              </p>
+              <v-form @submit.prevent="giveIndice" id="clue-form" v-else>
+                Vous devez fournir un indice ainsi que le nombre de mots qui s'y rapportent.
+                <v-layout row wrap>
+                  <v-flex>
+                    <v-text-field
+                      label="Indice"
+                      name="tell"
+                      type="text"
+                      class="mx-3"
+                      v-model="tell"
+                      outline
+                    />
+                  </v-flex>
+                  <v-flex >
+                    <v-btn-toggle v-model="occurences" value="1" class="mx-3">
+                      <v-btn v-for="i in [1,2,3,4,5,6]" :key="i" :value="i">{{i}}</v-btn>
+                    </v-btn-toggle>
+                    <v-btn color="primary" class="mx-3" type="submit" form="clue-form">
+                      Donner l'indice
+                    </v-btn> 
+                  </v-flex>
+                </v-layout>
+              </v-form>
+            </template>
+            <template v-else>
+              <p v-if="this.guessGiven">
+                L'indice fourni est <strong>{{currentGuess.word}}</strong> ({{currentGuess.occ}}).
+              </p>
+              <p v-else>
+                Le maître espion ennemi doit fournir un indice !
+              </p>
+            </template>
+          </v-container>
 
-        <v-container v-else>
-          <template v-if="isTeamTurn">
-            <p v-if="this.guessGiven">
-              Décidez en équipe des {{currentGuess.occ}} mot(s) en lien avec: <strong>{{currentGuess.word}}</strong> 
-            </p>
-            <p v-else>
-              Votre maître espion doit fournir un indice !
-            </p>
-          </template>
-          <template v-else>
-            <p v-if="this.guessGiven">
-              L'indice fourni est <strong>{{currentGuess.word}}</strong> ({{currentGuess.occ}}).
-            </p>
-            <p v-else>
-              Le maître espion ennemi doit fournir un indice !
-            </p>
-          </template>
-        </v-container>
+          <v-container v-else>
+            <template v-if="isTeamTurn">
+              <p v-if="this.guessGiven">
+                Décidez en équipe des {{currentGuess.occ}} mot(s) en lien avec: <strong>{{currentGuess.word}}</strong> 
+              </p>
+              <p v-else>
+                Votre maître espion doit fournir un indice !
+              </p>
+            </template>
+            <template v-else>
+              <p v-if="this.guessGiven">
+                L'indice fourni est <strong>{{currentGuess.word}}</strong> ({{currentGuess.occ}}).
+              </p>
+              <p v-else>
+                Le maître espion ennemi doit fournir un indice !
+              </p>
+            </template>
+          </v-container>
+        </template>
 
         <v-container grid-list-xl align-center text-xs-center>
           <v-layout justify-center row wrap>

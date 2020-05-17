@@ -18,6 +18,7 @@ const GAME_BOARD = 'GAME_BOARD';
 const GAME_REVEAL = 'GAME_REVEAL';
 const GAME_GUESS = 'GAME_GUESS';
 const GAME_TURN = 'GAME_TURN';
+const GAME_END = 'GAME_END';
 
 Vue.use(Vuex)
 
@@ -34,6 +35,7 @@ const store = new Vuex.Store({
       instance: '',
       players: [],
       started: false,
+      end: false,
       score: [0, 0],
       turn: 0,
       words: [],
@@ -92,6 +94,9 @@ const store = new Vuex.Store({
     },
     [GAME_TURN](state, { turn }) {
       state.game.turn = turn;
+    },
+    [GAME_END](state) {
+      state.game.end = true;
     }
   },
   actions: {
@@ -131,7 +136,10 @@ const store = new Vuex.Store({
     },
     turn: function(ctx, { payload }) {
       ctx.commit(GAME_TURN, payload);
-    }
+    },
+    end: function(ctx) {
+      ctx.commit(GAME_END);
+    } 
   }
 })
 
