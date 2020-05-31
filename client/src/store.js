@@ -32,6 +32,7 @@ const store = new Vuex.Store({
     },
     game: {
       pseudo: '',
+      isAdmin: false,
       instance: '',
       players: [],
       started: false,
@@ -66,8 +67,9 @@ const store = new Vuex.Store({
     [SOCKET_RECONNECT_ERROR](state) {
       state.socket.reconnectError = true;
     },
-    [GAME_PSEUDO](state, { pseudo }) {
+    [GAME_PSEUDO](state, { pseudo, isAdmin = false }) {
       state.game.pseudo = pseudo;
+      state.game.isAdmin = isAdmin;
     },
     [GAME_JOIN](state, name) {
       state.game.instance = name;

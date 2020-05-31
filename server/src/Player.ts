@@ -12,6 +12,8 @@ export class Player {
   private _readyToStart: boolean;
   private _wantsToSpy: boolean;
   private _isSpyMaster: boolean;
+  private _onRecycledPlayer?: Function;
+  private _isRecycling: boolean;
 
   get name(): string  { return this._name; }
 
@@ -30,6 +32,11 @@ export class Player {
   get isSpyMaster(): boolean { return this._isSpyMaster; }
   set isSpyMaster(val: boolean) { this._isSpyMaster = val; }
 
+  get isRecycling(): boolean { return this._isRecycling; }
+  set isRecycling(val: boolean) { this._isRecycling = val; }
+
+  set onRecycledPlayer(fn: Function) { this._onRecycledPlayer = fn; }
+
   private constructor(name: string, ws: WebSocket) {
     this._name = name;
     this._ws = ws;
@@ -38,6 +45,7 @@ export class Player {
     this._wantsToSpy = false;
     this._isSpyMaster = false;
     this._readyToStart = false;
+    this._isRecycling = false;
   }
 
   protected static findPlayer(name: string): Player | void {
@@ -54,6 +62,8 @@ export class Player {
       console.log('Recycle player');
       player._ws.close();
       player._ws = connection;
+      player._isRecycling = true;
+      player._onRecycledPlayer && player._onRecycledPlayer();
     } else {
       console.log('Create player');
       player = new Player(name, connection);

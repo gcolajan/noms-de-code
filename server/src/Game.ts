@@ -35,6 +35,7 @@ export class Game {
   protected static MATRIX_RED_COUNT = Game.MATRIX.filter(w => w === 'red').length;
   protected static MATRIX_BLUE_COUNT = Game.MATRIX.filter(w => w === 'blue').length;
 
+  private _startedAt: Date;
   private _name: string;
   private _players: Player[];
   private _currentWords: Word[];
@@ -70,10 +71,19 @@ export class Game {
   get redTeam(): Player[] { return this._players.filter(p => p.team === 'red'); }
   get blueTeam(): Player[] { return this._players.filter(p => p.team === 'blue'); }
 
-  get publicBoard(): Partial<Word>[] { return this._currentWords.map(({ kind, ...keep }) => ({ ...keep  })); }
+  get publicBoard(): Partial<Word>[] {
+    return this._currentWords
+      .map(({ kind, revealed, ...keep }) => ({
+        ...keep,
+        revealed,
+        ...(revealed ? { kind } : {}),
+      })
+    );
+  }
   get spyBoard(): Partial<Word>[] { return this._currentWords; }
 
   constructor() {
+    this._startedAt = new Date(),
     this._name = Game.createID();
     Game._usedIds.add(this._name);
     this._currentWords = this.generateBoard();
@@ -86,6 +96,7 @@ export class Game {
   end(): void {
     Game._usedIds.delete(this._name);
     this._onEnd && this._onEnd();
+    this._turn = -1;
     this.broadcast({ action: 'end' });
     this._players.forEach(p => p.close());
   }
@@ -101,10 +112,29 @@ export class Game {
     this._players.push(player);
 
     player.team = this.redTeam.length > this.blueTeam.length ? 'blue' : 'red';
+    player.onRecycledPlayer = () => this.onRecyclePlayer(player);
     this.broadcastPlayers();
   }
 
-  handle(player: Player, action: HandleAction, payload: any, proceed: boolean): void {
+  hasPlayer(player: Player): boolean {
+    return this._players.includes(player);
+  }
+
+  /** When a player has been recycled, we need to send data to restore his local state */
+  onRecyclePlayer(player: Player): void {
+    if (!this.started) {
+      player.error('Not supported action: recycling player on non started game');
+      return;
+    }
+
+    // We give the name of the instance
+    player.send({ action: 'join', payload: this.name });
+
+    // We call start again to broadcast players and board
+    this.start(true);
+  }
+
+  handle(player: Player, action: HandleAction, payload: any): void {
     this.refreshTimeout();
 
     if (!this.teamDefined) {
@@ -222,7 +252,7 @@ export class Game {
     }
   }
 
-  protected start(): void {
+  protected start(repeat: boolean = false): void {
     // Elect spy master
     this.redTeam.find(p => p.wantsToSpy)!.isSpyMaster = true;
     this.blueTeam.find(p => p.wantsToSpy)!.isSpyMaster = true;
@@ -237,12 +267,17 @@ export class Game {
     this.blueSpy.send({ action: 'board', payload: wordsWithDef });
 
     // Start game
-    this._turn = 1;
+    if (!repeat) {
+      this._turn = 1;
+    }
+
+    // Broadcast start action
     this.broadcast({
       action: 'start',
       payload: {
         score: this.score(),
         turn: this._turn,
+        repeat,
       }
     });
   }
@@ -303,6 +338,17 @@ export class Game {
       this.broadcast({ action: 'timeout' });
       this.end();
     }, Game.TIMEOUT);
+  }
+
+  toJSON(): any {
+    return {
+      name: this._name,
+      startedAt: this._startedAt,
+      turn: this._turn,
+      readyToStart: this.readyToStart,
+      teamDefined: this.teamDefined,
+      players: this._players.map(p => p.toJSON()),
+    }
   }
 
   protected static createID(length: number = 5): string {

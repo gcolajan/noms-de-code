@@ -4,7 +4,6 @@ import * as WebSocket from 'ws';
 import { Player } from './Player';
 import { Game } from './Game';
 import { CONFIG } from './config';
-import { isGameAction } from './GameActions';
 
 const app = express();
 const server = http.createServer(app);
@@ -21,14 +20,40 @@ wss.on('connection', (ws: WebSocket) => {
   let isAdmin = false;
   let player: Player | null = null;
   let game: Game | null = null;
+  
+  let isAlive = true;
+  ws.on('pong', () => isAlive = true);
+  const pingInterval = setInterval(() => {
+    console.log('ping');
+    if (!isAlive) {
+      clearInterval(pingInterval);
+      if (player) {
+        if (player.isSpyMaster && game) {
+          game.end();
+        } else {
+          player.close();
+        }
+      }
+      return ws.terminate();
+    }
+ 
+    isAlive = false;
+    ws.ping();
+  }, 10000);
 
   // connection is up, let's add a simple simple event
   ws.on('message', async (message: string) => {
     console.log('received: %s', message);
-    const { action, payload, proceed = true } = JSON.parse(message);
+    const { action, payload } = JSON.parse(message);
 
     if (isAdmin) {
-      
+      ws.send(JSON.stringify({
+        action: 'debug',
+        payload: {
+          clients: wss.clients.size,
+          instances: instances.map(i => i.toJSON()),
+        }
+      }));
     } else if (!player) {
       if (action === 'pseudo') {
         if (payload.pseudo === CONFIG.ADMIN_ACCESS) {
@@ -42,6 +67,18 @@ wss.on('connection', (ws: WebSocket) => {
         ws.send(JSON.stringify({ action: 'error', payload: "Send pseudo first" }));
       }
     } else if (!game) {
+      if (player.isRecycling) {
+        const instance = instances.find(game => game.hasPlayer(player!));
+        if (instance) {
+          game = instance;
+          player.isRecycling = false;
+          game.handle(player, action, payload);
+          return;
+        } else {
+          player.isRecycling = false;
+        }
+      }
+
       if (action === 'create') {
         game = new Game();
         instances.push(game);
@@ -61,7 +98,7 @@ wss.on('connection', (ws: WebSocket) => {
         player.error("Game required");
       }
     } else {
-      game.handle(player, action, payload, proceed);
+      game.handle(player, action, payload);
     }
   });
 

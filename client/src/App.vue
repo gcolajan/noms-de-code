@@ -28,7 +28,7 @@
 
     <v-content>
       <Home v-if="$store.state.game.pseudo === ''" />
-      <Debug v-else-if="$store.state.game.pseudo === 'debug'" />
+      <Debug v-else-if="$store.state.game.isAdmin" />
       <GameJoin v-else-if="$store.state.game.instance === ''" />
       <GameTeam v-else-if="!$store.state.game.started" />
       <Game v-else />
