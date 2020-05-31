@@ -23,6 +23,8 @@ type Guess = {
 }
 
 export class Game {
+  /** Timeout after 30min without any interaction */
+  protected static TIMEOUT = 30 * 60 * 1000;
   protected static _usedIds = new Set<string>();
   protected static MATRIX: WordKind[] = [
     'black',
@@ -38,6 +40,8 @@ export class Game {
   private _currentWords: Word[];
   private _turn: number;
   private _guesses: Guess[];
+  private _timeout?: NodeJS.Timeout;
+  private _onEnd?: Function;
 
   private _redSpy?: Player;
   private _blueSpy?: Player;
@@ -46,6 +50,8 @@ export class Game {
   get teamDefined(): boolean { return this._players.map(p => p.teamChosen).reduce((acc, val) => acc && val, true) }
   get readyToStart(): boolean { return this._players.map(p => p.readyToStart).reduce((acc, val) => acc && val, true) }
   get started(): boolean { return this._turn > 0; }
+
+  set onEnd(fn: Function) { this._onEnd = fn; }
 
   get redSpy(): Player {
     if (!this._redSpy) {
@@ -74,11 +80,14 @@ export class Game {
     this._players = [];
     this._turn = 0;
     this._guesses = [];
+    this.refreshTimeout();
   }
 
   end(): void {
     Game._usedIds.delete(this._name);
+    this._onEnd && this._onEnd();
     this.broadcast({ action: 'end' });
+    this._players.forEach(p => p.close());
   }
 
   generateBoard(): Word[] {
@@ -96,6 +105,8 @@ export class Game {
   }
 
   handle(player: Player, action: HandleAction, payload: any, proceed: boolean): void {
+    this.refreshTimeout();
+
     if (!this.teamDefined) {
       if (isPreAction(action)) {
         this.handlePreAction(player, action, payload);
@@ -284,6 +295,14 @@ export class Game {
 
   protected broadcastEndOfTurn(): void {
     this.broadcast({ action: 'turn', payload: { turn: this._turn } });
+  }
+
+  protected refreshTimeout(): void {
+    this._timeout && clearTimeout(this._timeout);
+    this._timeout = setTimeout(() => {
+      this.broadcast({ action: 'timeout' });
+      this.end();
+    }, Game.TIMEOUT);
   }
 
   protected static createID(length: number = 5): string {

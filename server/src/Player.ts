@@ -2,11 +2,11 @@ import * as WebSocket from 'ws';
 import { Team } from './Team';
 
 export class Player {
-  private static players: Player[] = [];
+  private static players: Set<Player> = new Set();
 
   private _name: string;
   private _ws: WebSocket;
-  private _team: Team;
+  private _team: Team | null;
 
   private _teamChosen: boolean;
   private _readyToStart: boolean;
@@ -15,8 +15,8 @@ export class Player {
 
   get name(): string  { return this._name; }
 
-  get team(): Team { return this._team; }
-  set team(val: Team) { this._team = val; }
+  get team(): Team | null { return this._team; }
+  set team(val: Team | null) { this._team = val; }
 
   get teamChosen(): boolean { return this._teamChosen; }
   set teamChosen(val: boolean) { this._teamChosen = val; }
@@ -30,25 +30,35 @@ export class Player {
   get isSpyMaster(): boolean { return this._isSpyMaster; }
   set isSpyMaster(val: boolean) { this._isSpyMaster = val; }
 
-  private constructor(name: string) {
+  private constructor(name: string, ws: WebSocket) {
     this._name = name;
+    this._ws = ws;
+    this._team = null;
     this._teamChosen = false;
     this._wantsToSpy = false;
     this._isSpyMaster = false;
     this._readyToStart = false;
   }
 
+  protected static findPlayer(name: string): Player | void {
+    for (const player of this.players.values()) {
+      if (player.name === name) {
+        return player;
+      }
+    }
+  }
+
   static create(name: string, connection: WebSocket): Player {
-    let player = this.players.find(p => p.name === name);
+    let player = this.findPlayer(name);
     if (player) {
       console.log('Recycle player');
-      player._ws && player._ws.close();
+      player._ws.close();
+      player._ws = connection;
     } else {
-      console.log('Create player')
-      player = new Player(name);
+      console.log('Create player');
+      player = new Player(name, connection);
+      this.players.add(player);
     }
-
-    player._ws = connection;
 
     return player;
   }
@@ -74,5 +84,11 @@ export class Player {
       isSpyMaster: this._isSpyMaster,
       readyToStart: this._readyToStart,
     }
+  }
+
+  close(): void {
+    this._ws.close();
+    Player.players.delete(this);
+    console.log(`Player disconnected: ${this.name}`);
   }
 }

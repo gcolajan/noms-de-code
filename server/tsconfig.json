@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+      "target": "es6",
+      "module": "commonjs",
+      "strict": true,
+      "lib": [
+          "ES2019"
+      ]
+  },
+  "exclude": [
+      "dist",
+      "node_modules"
+  ]
+}

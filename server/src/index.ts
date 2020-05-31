@@ -3,6 +3,8 @@ import * as http from 'http';
 import * as WebSocket from 'ws';
 import { Player } from './Player';
 import { Game } from './Game';
+import { CONFIG } from './config';
+import { isGameAction } from './GameActions';
 
 const app = express();
 const server = http.createServer(app);
@@ -16,6 +18,7 @@ const wss = new WebSocket.Server({ server });
 const instances: Game[] = [];
 
 wss.on('connection', (ws: WebSocket) => {
+  let isAdmin = false;
   let player: Player | null = null;
   let game: Game | null = null;
 
@@ -24,8 +27,15 @@ wss.on('connection', (ws: WebSocket) => {
     console.log('received: %s', message);
     const { action, payload, proceed = true } = JSON.parse(message);
 
-    if (!player) {
+    if (isAdmin) {
+      
+    } else if (!player) {
       if (action === 'pseudo') {
+        if (payload.pseudo === CONFIG.ADMIN_ACCESS) {
+          isAdmin = true;
+          ws.send(JSON.stringify({ action, payload: { success: true, pseudo: 'admin', isAdmin: true } }));
+          return;
+        }
         player = Player.create(payload.pseudo, ws);
         ws.send(JSON.stringify({ action, payload: { success: true, pseudo: player.name } }));
       } else {
@@ -35,6 +45,7 @@ wss.on('connection', (ws: WebSocket) => {
       if (action === 'create') {
         game = new Game();
         instances.push(game);
+        game.onEnd = () => instances.splice(instances.indexOf(game!), 1);
         game.add(player);
         player.send({ action, payload: game.name });
       } else if (action === 'join') {
